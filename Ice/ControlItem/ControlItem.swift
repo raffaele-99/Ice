@@ -62,11 +62,18 @@ final class ControlItem {
     }
 
     /// The identifier of the control item's window.
+    ///
+    /// Returns `nil` if the window's number isn't a valid `CGWindowID`.
+    ///
+    /// On macOS 26, menu bar item windows are owned by Control Center, and
+    /// AppKit can report a placeholder number for the status item's window
+    /// that doesn't fit in a `CGWindowID` (e.g. `0x100000000`). Converting
+    /// it with the trapping `CGWindowID(_:)` initializer crashes the app.
     var windowID: CGWindowID? {
         guard let window else {
             return nil
         }
-        return CGWindowID(window.windowNumber)
+        return CGWindowID(exactly: window.windowNumber)
     }
 
     /// A Boolean value that indicates whether the control item serves as

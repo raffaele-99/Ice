@@ -67,7 +67,10 @@ final class IceBarPanel: NSPanel {
                         // Only continue if the menu bar is automatically hidden, as Ice
                         // can't currently display its menu bar items.
                         appState.menuBarManager.isMenuBarHiddenBySystemUserDefaults,
-                        let info = window.flatMap({ WindowInfo(windowID: CGWindowID($0.windowNumber)) }),
+                        // Non-trapping conversion, as the window number isn't always a
+                        // valid CGWindowID (see ControlItem.windowID).
+                        let windowID = window.flatMap({ CGWindowID(exactly: $0.windowNumber) }),
+                        let info = WindowInfo(windowID: windowID),
                         // Window being offscreen means the menu bar is currently hidden.
                         // Close the bar, as things will start to look weird if we don't.
                         !info.isOnScreen
@@ -136,10 +139,13 @@ final class IceBarPanel: NSPanel {
                 guard
                     lowerBound <= upperBound,
                     let section = appState.menuBarManager.section(withName: .visible),
-                    let windowID = section.controlItem.windowID,
                     // Bridging.getWindowFrame is more reliable than ControlItem.windowFrame,
-                    // i.e. if the control item is offscreen.
-                    let itemFrame = Bridging.getWindowFrame(for: windowID)
+                    // i.e. if the control item is offscreen. However, the control item's
+                    // window ID isn't always available (see ControlItem.windowID), so fall
+                    // back to the frame reported by AppKit. Only midX is used below, which
+                    // is the same in both coordinate spaces.
+                    let itemFrame = section.controlItem.windowID.flatMap({ Bridging.getWindowFrame(for: $0) })
+                        ?? section.controlItem.windowFrame
                 else {
                     return originForRightOfScreen
                 }
